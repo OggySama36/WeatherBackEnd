@@ -2,12 +2,12 @@
 const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
 const bcrypt = require('bcrypt');
-const path = require('path');
 const { MongoClient } = require('mongodb');
-const { get } = require('mongoose');
 const nodemailer = require('nodemailer');
-const connect_MongoDB = new MongoClient('mongodb://localhost:27017');
+const connect_MongoDB = new MongoClient(process.env.MONGO_URI);
+const PORT = process.env.PORT || 3000;
 let manipulateDB;
 async function connectDB(){
     await connect_MongoDB.connect();
@@ -17,13 +17,8 @@ async function connectDB(){
 }
 
 app.use(express.json());
-app.use(express.static(path.resolve('D:/MyFrontend')));
-app.get('/weather', function(req, res){
-    res.sendFile(path.resolve('D:/MyFrontend/Weather Forecast/weather.html'));
-});
-app.get('/login', (req, res) => {
-    res.sendFile(path.resolve('D:/MyFrontend/Weather Forecast/weatherLogin.html'));
-});
+app.use(cors());
+
 app.post('/RegisterHandler', async (req, res) => {
     const getData_Register = req.body;
     const find = await manipulateDB.findOne({username: getData_Register.username});
@@ -103,8 +98,8 @@ app.post('/FeedbackHandler', async (req, res) => {
     const portMailing = nodemailer.createTransport({
         service: "gmail",
         auth: {
-            user: "tiennguyen03062006@gmail.com",
-            pass: "cztg txzt btbg quib",
+            user: process.env.USER,
+            pass: process.env.PASS,
         }
     })
     try {
@@ -134,7 +129,6 @@ app.post('/FeedbackHandler', async (req, res) => {
     
 })
 connectDB().then(() => {
-    const PORT = 3000;
     app.listen(PORT, function(){
         console.log(`Server is working at ${PORT}`);
     });
