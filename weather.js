@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 const { MongoClient } = require('mongodb');
 const { get } = require('mongoose');
+const nodemailer = require('nodemailer');
 const connect_MongoDB = new MongoClient('mongodb://localhost:27017');
 let manipulateDB;
 async function connectDB(){
@@ -97,6 +98,41 @@ app.delete('/DeleteAccoutHandler', async (req, res) => {
         });
     }
 });
+app.post('/FeedbackHandler', async (req, res) => {
+    const get_Feedback_Request = req.body;
+    const portMailing = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: "tiennguyen03062006@gmail.com",
+            pass: "cztg txzt btbg quib",
+        }
+    })
+    try {
+        await portMailing.sendMail({
+        from: "tiennguyen03062006@gmail.com",
+        to: "tiennguyen03062006@gmail.com",
+        replyTo: get_Feedback_Request.clientSending,
+        subject: "Feedback about Weather Forecast...",
+        text: `
+        From Client: ${get_Feedback_Request.nameClient}
+        Email: ${get_Feedback_Request.clientSending}
+        Message: ${get_Feedback_Request.messageSending}
+        `,
+        });
+        res.json({
+            "state": true,
+            "message": "Email sent Successfully! Thank you for your feedback."
+        });
+    }
+    catch(error){
+        res.status(500).json({
+            "state": false,
+            "message": "Oops... Email sent Unsuccessfully! Please wait about 5-7 minutes and try again.",
+        });
+        console.log(error);
+    }
+    
+})
 connectDB().then(() => {
     const PORT = 3000;
     app.listen(PORT, function(){
