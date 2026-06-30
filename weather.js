@@ -6,7 +6,7 @@ const { MongoClient } = require('mongodb');
 const connect_MongoDB = new MongoClient(process.env.MONGO_URI);
 const PORT = process.env.PORT || 3000;
 const { Resend } = require('resend');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 let manipulateDB;
 async function connectDB(){
@@ -124,17 +124,20 @@ app.post('/WeatherAI', async (req, res) => {
         const w = weatherRes.data;
         const weatherContext = `Thời tiết hiện tại tại ${w.name}: Nhiệt độ ${w.main.temp}°C (cảm giác ${w.main.feels_like}°C), ${w.weather[0].description}, độ ẩm ${w.main.humidity}%, gió ${w.wind.speed} m/s.`;
 
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const aiRes = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1024,
-            system: `Bạn là trợ lý thời tiết thông minh tên là WeatherAI. Chỉ trả lời các câu hỏi liên quan đến thời tiết, khí hậu, trang phục phù hợp, hoặc hoạt động ngoài trời. Trả lời ngắn gọn, thân thiện bằng tiếng Việt. Dữ liệu thời tiết thực tế: ${weatherContext}`,
-            messages: [
-                ...history,
-                { role: 'user', content: message }
-            ]
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: `Bạn là trợ lý thời tiết thông minh tên là WeatherAI. Chỉ trả lời các câu hỏi liên quan đến thời tiết, khí hậu, trang phục phù hợp, hoặc hoạt động ngoài trời. Trả lời ngắn gọn, thân thiện bằng tiếng Việt. Dữ liệu thời tiết thực tế: ${weatherContext}`,
         });
-        res.json({ state: true, reply: aiRes.content[0].text });
+        const chatHistory = history.slice(0, -1).map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+        }));
+
+        const chat = model.startChat({ history: chatHistory });
+        const result = await chat.sendMessage(message);
+
+        res.json({ state: true, reply: result.response.text() });
     } catch (error) {
         console.log(error);
         res.status(500).json({ state: false, message: 'Lỗi xử lý yêu cầu!' });
