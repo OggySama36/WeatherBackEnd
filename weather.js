@@ -8,6 +8,7 @@ const { MongoClient } = require('mongodb');
 const nodemailer = require('nodemailer');
 const connect_MongoDB = new MongoClient(process.env.MONGO_URI);
 const PORT = process.env.PORT || 3000;
+const { Resend } = require('resend');
 let manipulateDB;
 async function connectDB(){
     await connect_MongoDB.connect();
@@ -95,41 +96,26 @@ app.delete('/DeleteAccoutHandler', async (req, res) => {
 });
 app.post('/FeedbackHandler', async (req, res) => {
     const get_Feedback_Request = req.body;
-    const portMailing = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 2525,
-        secure: false,
-        auth: {
-            user: process.env.USER,
-            pass: process.env.PASS,
-        }
-    })
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     try {
-        await portMailing.sendMail({
-        from: "tiennguyen03062006@gmail.com",
-        to: "tiennguyen03062006@gmail.com",
-        replyTo: get_Feedback_Request.clientSending,
-        subject: "Feedback about Weather Forecast...",
-        text: `
-        From Client: ${get_Feedback_Request.nameClient}
-        Email: ${get_Feedback_Request.clientSending}
-        Message: ${get_Feedback_Request.messageSending}
-        `,
+        await resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to: 'tiennguyen03062006@gmail.com',
+            reply_to: get_Feedback_Request.clientSending,
+            subject: 'Feedback about Weather Forecast...',
+            text: `
+                From Client: ${get_Feedback_Request.nameClient}
+                Email: ${get_Feedback_Request.clientSending}
+                Message: ${get_Feedback_Request.messageSending}
+            `,
         });
-        res.json({
-            "state": true,
-            "message": "Email sent Successfully! Thank you for your feedback."
-        });
-    }
-    catch(error){
-        res.status(500).json({
-            "state": false,
-            "message": "Oops... Email sent Unsuccessfully! Please wait about 5-7 minutes and try again.",
-        });
+        res.json({ state: true, message: "Email sent Successfully! Thank you for your feedback." });
+    } catch (error) {
         console.log(error);
+        res.status(500).json({ state: false, message: "Oops... Email sent Unsuccessfully!" });
     }
-    
-})
+});
 connectDB().then(() => {
     app.listen(PORT, function(){
         console.log(`Server is working at ${PORT}`);
