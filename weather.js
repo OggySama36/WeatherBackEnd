@@ -96,7 +96,9 @@ app.delete('/DeleteAccoutHandler', async (req, res) => {
 app.post('/FeedbackHandler', async (req, res) => {
     const get_Feedback_Request = req.body;
     const portMailing = nodemailer.createTransport({
-        service: "gmail",
+        host: 'smtp.gmail.com',
+        port: 2525,
+        secure: false,
         auth: {
             user: process.env.USER,
             pass: process.env.PASS,
