@@ -126,7 +126,7 @@ app.post('/WeatherAI', async (req, res) => {
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: `Bạn là trợ lý thời tiết thông minh tên là WeatherAI. Chỉ trả lời các câu hỏi liên quan đến thời tiết, khí hậu, trang phục phù hợp, hoặc hoạt động ngoài trời. Trả lời ngắn gọn, thân thiện bằng tiếng Việt. Dữ liệu thời tiết thực tế: ${weatherContext}`,
         });
         const chatHistory = history.slice(0, -1).map(msg => ({
