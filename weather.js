@@ -1,14 +1,13 @@
-//node "weather api/weather.js"
 const express = require('express');
 const app = express();
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const { MongoClient } = require('mongodb');
-const nodemailer = require('nodemailer');
 const connect_MongoDB = new MongoClient(process.env.MONGO_URI);
 const PORT = process.env.PORT || 3000;
 const { Resend } = require('resend');
+const Anthropic = require('@anthropic-ai/sdk');
+const axios = require('axios');
 let manipulateDB;
 async function connectDB(){
     await connect_MongoDB.connect();
@@ -116,8 +115,35 @@ app.post('/FeedbackHandler', async (req, res) => {
         res.status(500).json({ state: false, message: "Oops... Email sent Unsuccessfully!" });
     }
 });
+app.post('/WeatherAI', async (req, res) => {
+    const { message, city, history = [] } = req.body;
+    try {
+        const weatherRes = await axios.get(`https://api.openweathermap.org/data/2.5/weather`, {
+            params: { q: city || 'Ho Chi Minh City', appid: process.env.OPENWEATHER_API_KEY, units: 'metric', lang: 'vi' }
+        });
+        const w = weatherRes.data;
+        const weatherContext = `Thời tiết hiện tại tại ${w.name}: Nhiệt độ ${w.main.temp}°C (cảm giác ${w.main.feels_like}°C), ${w.weather[0].description}, độ ẩm ${w.main.humidity}%, gió ${w.wind.speed} m/s.`;
+
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const aiRes = await client.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            system: `Bạn là trợ lý thời tiết thông minh tên là WeatherAI. Chỉ trả lời các câu hỏi liên quan đến thời tiết, khí hậu, trang phục phù hợp, hoặc hoạt động ngoài trời. Trả lời ngắn gọn, thân thiện bằng tiếng Việt. Dữ liệu thời tiết thực tế: ${weatherContext}`,
+            messages: [
+                ...history,
+                { role: 'user', content: message }
+            ]
+        });
+        res.json({ state: true, reply: aiRes.content[0].text });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ state: false, message: 'Lỗi xử lý yêu cầu!' });
+    }
+});
 connectDB().then(() => {
     app.listen(PORT, function(){
         console.log(`Server is working at ${PORT}`);
     });
 });
+
+
